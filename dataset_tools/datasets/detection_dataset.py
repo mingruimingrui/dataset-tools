@@ -138,6 +138,7 @@ class DetectionDataset(object):
 
     get_ann_info  = _getters.get_ann_info
     get_ann_array = _getters.get_ann_array
+    get_mask_array = _getters.get_mask_array
 
     ###########################################################################
     #### Dataset setters
@@ -202,9 +203,11 @@ class DetectionDataset(object):
         """ Sets a single image detection annotation, set_classes has to be ran in advanced
 
         Args
-            image_id  : Image id associated to this detection
-            bbox      : Bounding box for detection
-            ann_class : Class of this detection instance
+            image_id    : Image id associated to this detection
+            bbox        : Bounding box for detection
+            class_name  : Class name of object
+            class_id    : Class id of object
+            segmentation: RLE of the object mask
         """
         assert (class_name is not None) or (class_id is not None), 'Either class_name or class_id must be present'
         if class_name is not None:

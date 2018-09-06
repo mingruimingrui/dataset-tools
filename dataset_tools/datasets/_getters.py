@@ -5,6 +5,7 @@ import numpy as np
 from copy import deepcopy
 
 from ..utils.image_io import read_image, read_image_url
+from ..utils.mask import rle_decode
 
 
 def get_dataset_file(self):
@@ -102,7 +103,7 @@ def get_ann_array(self, image_id=None, ann_id=None):
     if ann_id provided, returns a (5, ) array of annotation bbox + class_id
     """
     if image_id is not None:
-        anns = self.get_ann_info(image_id)
+        anns = [self.ann_infos[ann_id] for ann_id in self.img_to_ann[image_id]]
         if len(anns) > 0:
             return np.array([ann['bbox'] + [ann['class_id']] for ann in anns])
         else:
@@ -112,3 +113,16 @@ def get_ann_array(self, image_id=None, ann_id=None):
         return np.array(ann['bbox'] + [ann['class_id']])
     else:
         raise Exception('Either image_id or ann_id has to be provided')
+
+
+def get_mask_array(self, ann_id):
+    """ Retrieves the segmentation array given an annotation id """
+    ann_info = self.ann_infos[ann_id]
+    image_id = ann_info['image_id']
+    image_info = self.image_infos[image_id]
+    image_height = image_info['height']
+    image_width  = image_info['width']
+
+    assert image_height is not None and image_width is not None
+
+    return rle_decode(ann_info['segmentation'], (image_height, image_width))
