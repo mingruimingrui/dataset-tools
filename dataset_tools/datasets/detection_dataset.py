@@ -8,9 +8,9 @@ from . import _getters
 class DetectionDataset(object):
     def __init__(self, dataset_file, root_dir=None, classes=None, new_dataset=False):
         """
-        DetectionDataset class
-        Either loads an existing dataset or prepares to create a new dataset
+        Dataset for detection and segmentation tasks
 
+        Either loads an existing dataset or prepares to create a new dataset
         - If loading existing dataset, root_dir and classes will be ignored
         - If creating new dataset, root_dir and classes must have values
 
