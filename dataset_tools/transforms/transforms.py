@@ -42,6 +42,25 @@ _pil_interpolation_to_cv2 = {
 }
 
 
+class ImageCompose(object):
+    """ Composes several transforms together and apply only to the Image """
+    def __init__(self, transforms):
+        self.transforms = transforms
+
+    def __call__(self, entry):
+        for t in self.transforms:
+            entry['image'] = t(entry['image'])
+        return entry
+
+    def __repr__(self):
+        format_string = self.__class__.__name__ + '('
+        for t in self.transforms:
+            format_string += '\n'
+            format_string += '    {0}'.format(t)
+        format_string += '\n)'
+        return format_string
+
+
 class Resize(object):
     """ Resize input sample to given size
 
