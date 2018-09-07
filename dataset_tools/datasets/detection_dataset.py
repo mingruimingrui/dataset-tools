@@ -86,7 +86,7 @@ class DetectionDataset(object):
         for ann_info in data['annotations']:
             self.img_to_ann[ann_info['image_id']].append(ann_info['id'])
 
-    def save_dataset(self, dataset_file, force_overwrite=False):
+    def save_dataset(self, dataset_file=None, force_overwrite=False):
         """ Save DetectionDataset to a json file
         Args
             dataset_file    : Path to DetectionDataset json file (or None if saving to same file dataset is loaded from)
@@ -95,12 +95,13 @@ class DetectionDataset(object):
         if dataset_file is not None:
             self.dataset_file = dataset_file
 
+        assert self.dataset_file is not None
+
         # Initialize dict
         json_dataset = OrderedDict()
 
         # Save dataset info
         json_dataset['root_dir'] = self.root_dir
-        json_dataset['dataset_type'] = self.dataset_type
         json_dataset['classes'] = list(self.name_to_class_info.keys())
         json_dataset['images'] = list(self.image_infos.values())
         json_dataset['annotations'] = list(self.ann_infos.values())
