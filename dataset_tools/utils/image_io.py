@@ -11,7 +11,7 @@ from io import BytesIO
 from PIL import Image
 
 
-def read_image_local(path):
+def read_image(path):
     return Image.open(path).convert('RGB')
 
 
