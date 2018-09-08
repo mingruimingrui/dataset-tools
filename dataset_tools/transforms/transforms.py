@@ -42,6 +42,70 @@ _pil_interpolation_to_cv2 = {
 }
 
 
+class ApplyBbox(object):
+    """ Applies the bbox for each entry on the input sample
+
+    Args:
+        expand (float, optional): Percent to expand bounding box by in ratio form
+            eg. expand=0.2 means bounding box will have it's height and width each increased by 20%
+        filter_annotations (bool, optional): Flag to raise if annotations should
+            be filtered post cropping
+    """
+    def __init__(self, expand=0, filter_annotations=True):
+        self.expand = expand
+        self.filter_annotations = filter_annotations
+
+    def __call__(self, entry):
+        # Make copy of entry
+        entry = deepcopy(entry)
+
+        if 'bbox' not in entry:
+            return entry
+
+        # Extract bbox
+        bbox = entry['bbox']
+        del entry['bbox']
+
+        # Expand bbox
+        if self.expand != 0:
+            bbox_w = bbox[2] - bbox[0]
+            bbox_h = bbox[3] - bbox[1]
+            expand_w = bbox_w * self.expand / 2
+            expand_h = bbox_h * self.expand / 2
+            bbox[0] -= expand_w
+            bbox[1] -= expand_h
+            bbox[2] += expand_w
+            bbox[3] += expand_h
+
+        # apply bbox to image and mask
+        entry['image'] = entry['image'].crop((bbox[0], bbox[1], bbox[2], bbox[3]))
+        if 'mask' in entry:
+            entry['mask'] = entry['mask'].crop((bbox[0], bbox[1], bbox[2], bbox[3]))
+
+        if 'annotations' in entry:
+            # apply bbox to annotations
+            anns = entry['annotations'].astype('float')
+            anns[:, 0] -= bbox[1]
+            anns[:, 1] -= bbox[0]
+            anns[:, 2] -= bbox[1]
+            anns[:, 3] -= bbox[0]
+
+            if self.filter_annotations:
+                new_image_size = entry['image'].size
+                keep_idx = (anns[:, 0] >= 0) & \
+                           (anns[:, 1] >= 0) & \
+                           (anns[:, 2] <= new_image_size[0]) & \
+                           (anns[:, 3] <= new_image_size[1])
+                anns = anns[keep_idx]
+
+            entry['annotations'] = anns
+
+        return entry
+
+    def __repr__(self):
+        return self.__class__.__name__ + '(expand={}, filter_annotations={})'.format(self.expand, self.filter_annotations)
+
+
 class ImageCompose(object):
     """ Composes several transforms together and apply only to the Image """
     def __init__(self, transforms):
@@ -251,3 +315,43 @@ class RandomVerticalFlip(object):
 
     def __repr__(self):
         return self.__class__.__name__ + '(p={})'.format(self.p)
+
+
+# class FixedRandomRotation(object):
+#     """Rotates the given PIL Image at a fixed angle with a given probability
+#     Args:
+#         angle (float, int): angle in degree to rorate the image in the
+#             clockwise direction. Default value is 90
+#         p (float): probability of the image being rotated. Default value is 0.5
+#         resample (int, optional): Desired interpolation. Default is
+#             ``PIL.Image.BILINEAR``
+#         expand (bool, optional): Optional expansion flag.
+#             If true, expands the output image to make it large enough to hold the entire rotated image.
+#             If false or omitted, make the output image the same size as the input image.
+#             Note that the expand flag assumes rotation around the center and no translation.
+#     """
+#     def __init__(self, angle=90, p=0.5, resample=Image.BILINEAR, expand=False):
+#         self.angle = angle
+#         self.p = p
+#         self.resample = self.resample
+#         self.expand = expand
+#
+#     def __call__(self, entry):
+#         # Make copy of entry
+#         entry = deepcopy(entry)
+#
+#         if random.random() < self.p:
+#             for k, v in entry.items():
+#                 if k in ['image', 'mask']:
+#                     entry[k] = F.rotate(v, self.angle, resample=self.resample, expand=self.expand)
+#                 elif k == 'annotations':
+#
+#                 elif k == 'bbox':
+#
+#
+#         return entry
+#
+#     def __repr__(self):
+#         interpolate_str = _pil_interpolation_to_str[self.resample]
+#         return self.__class__.__name__ + '(angle={}, p={}, resample={}, expand={})'.format(
+#             self.angle, self.p, interpolate_str, self.expand)
