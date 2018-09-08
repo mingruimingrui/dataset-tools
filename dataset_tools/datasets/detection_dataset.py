@@ -134,11 +134,14 @@ class DetectionDataset(object):
     get_all_image_index = _getters.get_all_image_index
     get_all_ann_index   = _getters.get_all_ann_index
 
-    get_image_info = _getters.get_image_info
-    get_image_pil  = _getters.get_image_pil
+    get_image_info  = _getters.get_image_info
+    get_image_pil   = _getters.get_image_pil
+    get_image_array = _getters.get_image_array
 
     get_ann_info  = _getters.get_ann_info
     get_ann_array = _getters.get_ann_array
+
+    get_mask_pil   = _getters.get_mask_pil
     get_mask_array = _getters.get_mask_array
 
     ###########################################################################

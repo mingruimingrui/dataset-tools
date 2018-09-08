@@ -1,8 +1,10 @@
 """ File to store all dataset getter functions """
 
 import os
-import numpy as np
 from copy import deepcopy
+
+import numpy as np
+from PIL import Image
 
 from ..utils.image_io import read_image, read_image_url
 from ..utils.mask import rle_decode
@@ -82,6 +84,12 @@ def get_image_pil(self, image_id=None, ann_id=None):
         return read_image(image_path)
 
 
+def get_image_array(self, image_id=None, ann_id=None):
+    """ Retrieves the array associated with the image_id or ann_id """
+    image_pil = self.get_image_pil(image_id=image_id, ann_id=ann_id)
+    return np.asarray(image_pil)
+
+
 def get_ann_info(self, image_id=None, ann_id=None):
     """ Retrieves the annotation informations given an image id or annotation id
 
@@ -113,6 +121,12 @@ def get_ann_array(self, image_id=None, ann_id=None):
         return np.array(ann['bbox'] + [ann['class_id']])
     else:
         raise Exception('Either image_id or ann_id has to be provided')
+
+
+def get_mask_pil(self, ann_id):
+    """ Retrieves the segmentation Image given an annotation id """
+    mask_array = self.get_mask_array(ann_id=ann_id)
+    return Image.fromarray(mask_array)
 
 
 def get_mask_array(self, ann_id):
