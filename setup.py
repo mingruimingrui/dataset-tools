@@ -5,7 +5,7 @@ import numpy as np
 
 ext_modules = [Extension(
     'dataset_tools.utils._mask',
-    sources=['dataset_tools/utils/maskApi.c', 'dataset_tools/utils/_mask.pyx'],
+    sources=['dataset_tools/utils/_mask.pyx'],
     include_dirs = [np.get_include()],
     extra_compile_args=[]
 )]
