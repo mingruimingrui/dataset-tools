@@ -125,7 +125,7 @@ def get_ann_array(self, image_id=None, ann_id=None):
 
 def get_mask_pil(self, ann_id):
     """ Retrieves the segmentation Image given an annotation id """
-    mask_array = self.get_mask_array(ann_id=ann_id)
+    mask_array = self.get_mask_array(ann_id=ann_id) * 255
     return Image.fromarray(mask_array)
 
 
