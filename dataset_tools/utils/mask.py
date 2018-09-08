@@ -28,7 +28,6 @@ def rle_decode(mask_rle, shape):
         img[lo:hi] = 1
     return img.reshape(shape).T
 
-
 def mask_to_bbox(mask):
     img_h, img_w = mask.shape[:2]
 
