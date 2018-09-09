@@ -226,7 +226,7 @@ class DetectionDataset(object):
         ann_info = {
             'id'          : ann_id,
             'image_id'    : image_id,
-            'bbox'        : bbox,
+            'bbox'        : list(bbox),
             'class_id'    : class_id,
             'class_name'  : class_name,
             'segmentation': segmentation
