@@ -49,7 +49,6 @@ class ImageCollateContainer(object):
                 mode=self.mode,
                 value=self.value
             )
-            images += [entry['image']]
 
             if 'mask' in entry:
                 entry['mask'] = torch.nn.functional.pad(
@@ -58,7 +57,6 @@ class ImageCollateContainer(object):
                     mode=self.mode,
                     value=self.value
                 )
-                masks += [entry['mask']]
 
             if 'annotations' in entry:
                 if len(entry['annotations']) > 0:
@@ -66,7 +64,6 @@ class ImageCollateContainer(object):
                     entry['annotations'][:, 1] += x1_pad
                     entry['annotations'][:, 2] += y2_pad
                     entry['annotations'][:, 3] += x2_pad
-                annotations += [entry['annotations']]
 
         batch = { 'image': torch.stack([e['image'] for e in entries], dim=0) }
 
@@ -104,10 +101,10 @@ class TorchDetectionDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         image_id = self.all_idx[idx]
-        sample {
+        sample = {
             'image_id'   : image_id,
             'image'      : self.dataset.get_image_pil(image_id),
-            'annotations': self.get_ann_array(image_id)
+            'annotations': self.dataset.get_ann_array(image_id)
         }
 
         if self.transform is not None:
