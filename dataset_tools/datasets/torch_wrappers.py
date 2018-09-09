@@ -5,7 +5,7 @@ import torch.utils.data
 import torchvision
 
 from .detection_dataset import DetectionDataset
-from ..utils import transforms
+from .. import transforms
 
 
 class ImageCollateContainer(object):
@@ -28,8 +28,8 @@ class ImageCollateContainer(object):
         self.value = value
 
     def collate_fn(self, entries):
-        all_shapes = (e['image'].shape for e in entries)
-        max_shape = (max(s[i] for s in all_shapes) for i in range(3))
+        all_shapes = [e['image'].shape for e in entries]
+        max_shape = [max(s[i] for s in all_shapes) for i in range(3)]
 
         for entry, entry_shape in zip(entries, all_shapes):
             if self.pad_method == 'center':
@@ -61,10 +61,11 @@ class ImageCollateContainer(object):
                 masks += [entry['mask']]
 
             if 'annotations' in entry:
-                entry['annotations'][:, 0] += y1_pad
-                entry['annotations'][:, 1] += x1_pad
-                entry['annotations'][:, 2] += y2_pad
-                entry['annotations'][:, 3] += x2_pad
+                if len(entry['annotations']) > 0:
+                    entry['annotations'][:, 0] += y1_pad
+                    entry['annotations'][:, 1] += x1_pad
+                    entry['annotations'][:, 2] += y2_pad
+                    entry['annotations'][:, 3] += x2_pad
                 annotations += [entry['annotations']]
 
         batch = { 'image': torch.stack([e['image'] for e in entries], dim=0) }
