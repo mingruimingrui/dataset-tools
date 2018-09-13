@@ -110,8 +110,8 @@ class TorchDetectionDataset(torch.utils.data.Dataset):
         if self.transform is not None:
             sample = self.transform(sample)
 
-        sample['image'] = self.image_to_tensor(sample['image'])
-        sample['annotations'] = torch.from_numpy(sample['annotations'])
+        sample['image'] = self.image_to_tensor(sample['image']).float()
+        sample['annotations'] = torch.from_numpy(sample['annotations']).float()
 
         return sample
 
@@ -157,7 +157,7 @@ class TorchSegmentationDataset(torch.utils.data.Dataset):
         if 'bbox' in sample:
             sample = self.apply_bbox(sample)
 
-        sample['image'] = self.image_to_tensor(sample['image'])
-        sample['mask'] = self.mask_to_tensor(sample['mask'])
+        sample['image'] = self.image_to_tensor(sample['image']).float()
+        sample['mask'] = self.mask_to_tensor(sample['mask']).float()
 
         return sample
