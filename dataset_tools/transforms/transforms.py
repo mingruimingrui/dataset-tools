@@ -51,7 +51,7 @@ class ApplyBbox(object):
         filter_annotations (bool, optional): Flag to raise if annotations should
             be filtered post cropping
     """
-    def __init__(self, expand=0, filter_annotations=True):
+    def __init__(self, expand=0, filter_annotations=True, keep_box=False):
         self.expand = expand
         self.filter_annotations = filter_annotations
 
@@ -76,6 +76,12 @@ class ApplyBbox(object):
             bbox[1] -= expand_h
             bbox[2] += expand_w
             bbox[3] += expand_h
+
+        if keep_box:
+            if self.expand != 0:
+                entry['bbox'] = [expand_w, expand_h, expand_w + bbox_w, bbox_h + expand_h]
+            else:
+                entry['bbox'] = [0, 0, bbox[2] - bbox[0], bbox[3] - bbox[1]]
 
         # apply bbox to image and mask
         entry['image'] = entry['image'].crop((bbox[0], bbox[1], bbox[2], bbox[3]))
