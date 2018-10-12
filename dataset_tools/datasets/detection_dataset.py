@@ -6,20 +6,18 @@ from . import _getters
 
 
 class DetectionDataset(object):
-    def __init__(self, dataset_file, root_dir=None, classes=None, new_dataset=False):
+    def __init__(self, dataset_file, root_dir=None, classes=None):
         """
         Dataset for detection and segmentation tasks
 
         Either loads an existing dataset or prepares to create a new dataset
-        - If loading existing dataset, root_dir and classes will be ignored
+        - If loading an existing dataset, root_dir and classes should be None
         - If creating new dataset, root_dir and classes must have values
 
         Args
             dataset_file : Path to detection dataset json file
             root_dir     : Path to root directory of all image files in dataset (Only used when creating new dataset)
             classes      : list of strings representing all classes
-            new_dataset  : Flag to raise if creating new dataset (Automatically set to true if dataset_file does not exist)
-
         """
         self.dataset_file = dataset_file
 
@@ -31,8 +29,8 @@ class DetectionDataset(object):
         self.img_to_ann         = OrderedDict()
         self.next_image_id      = 0
 
-        if not os.path.isfile(self.dataset_file):
-            new_dataset = True
+
+        new_dataset = (not os.path.isfile(self.dataset_file)) or root_dir or classes
 
         if new_dataset:
             assert root_dir is not None and classes is not None, 'If creating new dataset, both root_dir and classes must be provided'

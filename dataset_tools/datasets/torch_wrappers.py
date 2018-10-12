@@ -1,5 +1,7 @@
 """ Wrapper to transform datasets into torch.utils.data.Dataset """
 
+import numpy as np
+
 import torch
 import torch.utils.data
 import torchvision
@@ -45,7 +47,7 @@ class ImageCollateContainer(object):
 
             entry['image'] = torch.nn.functional.pad(
                 entry['image'],
-                pad=(x1_pad, y1_pad, x2_pad, y2_pad),
+                pad=(x1_pad, x2_pad, y1_pad, y2_pad),
                 mode=self.mode,
                 value=self.value
             )
@@ -53,7 +55,7 @@ class ImageCollateContainer(object):
             if 'mask' in entry:
                 entry['mask'] = torch.nn.functional.pad(
                     entry['mask'],
-                    pad=(x1_pad, y1_pad, x2_pad, y2_pad),
+                    pad=(x1_pad, x2_pad, y1_pad, y2_pad),
                     mode=self.mode,
                     value=self.value
                 )
@@ -62,8 +64,14 @@ class ImageCollateContainer(object):
                 if len(entry['annotations']) > 0:
                     entry['annotations'][:, 0] += y1_pad
                     entry['annotations'][:, 1] += x1_pad
-                    entry['annotations'][:, 2] += y2_pad
-                    entry['annotations'][:, 3] += x2_pad
+                    entry['annotations'][:, 2] += y1_pad
+                    entry['annotations'][:, 3] += x1_pad
+
+            if 'bbox' in entry:
+                entry['bbox'][0] += y1_pad
+                entry['bbox'][1] += x1_pad
+                entry['bbox'][2] += y1_pad
+                entry['bbox'][3] += x1_pad
 
         batch = { 'image': torch.stack([e['image'] for e in entries], dim=0) }
 
@@ -72,6 +80,9 @@ class ImageCollateContainer(object):
 
         if 'annotations' in entry:
             batch['annotations'] = [e['annotations'] for e in entries]
+
+        if 'bbox' in entry:
+            batch['bbox'] = torch.stack([e['bbox'] for e in entries])
 
         return batch
 
@@ -128,7 +139,6 @@ class TorchSegmentationDataset(torch.utils.data.Dataset):
         self.transform = transform
 
         self.all_idx = self.dataset.get_all_ann_index()
-        self.apply_bbox = transforms.ApplyBbox()
         self.image_to_tensor = torchvision.transforms.Compose([
             torchvision.transforms.ToTensor(),
             torchvision.transforms.Normalize(
@@ -146,18 +156,17 @@ class TorchSegmentationDataset(torch.utils.data.Dataset):
         sample = {
             'ann_id': ann_id,
             'image': self.dataset.get_image_pil(ann_id=ann_id),
-            'bbox': self.dataset.get_ann_array(ann_id=ann_id),
+            'bbox': self.dataset.get_ann_array(ann_id=ann_id)[:4],
             'mask': self.dataset.get_mask_pil(ann_id=ann_id),
         }
 
         if self.transform is not None:
             sample = self.transform(sample)
 
-        # Apply bbox if needed
-        if 'bbox' in sample:
-            sample = self.apply_bbox(sample)
-
         sample['image'] = self.image_to_tensor(sample['image']).float()
         sample['mask'] = self.mask_to_tensor(sample['mask']).float()
+
+        # if 'bbox' in sample:
+        #     sample['bbox'] = torch.Tensor(sample['bbox']).float()
 
         return sample
