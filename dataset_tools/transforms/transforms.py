@@ -1,5 +1,4 @@
 """ Copy of https://github.com/pytorch/vision/blob/master/torchvision/transforms/transforms.py
-
 But for dict entries of the following format
 
 {
@@ -9,21 +8,16 @@ But for dict entries of the following format
     'mask' (optional): PIL.Image object,
     ...
 }
-
-Other keys will simply be converted into tensors
 """
 from __future__ import division
 
-import random
 import numbers
 import collections
-from copy import deepcopy
 
-import numpy as np
 import cv2
 from PIL import Image
 
-import torchvision.transforms.functional as F
+from . import functional as F
 
 
 _pil_interpolation_to_str = {
@@ -31,14 +25,6 @@ _pil_interpolation_to_str = {
     Image.BILINEAR: 'PIL.Image.BILINEAR',
     Image.BICUBIC: 'PIL.Image.BICUBIC',
     Image.LANCZOS: 'PIL.Image.LANCZOS',
-}
-
-
-_pil_interpolation_to_cv2 = {
-    Image.NEAREST: cv2.INTER_NEAREST,
-    Image.BILINEAR: cv2.INTER_LINEAR,
-    Image.BICUBIC: cv2.INTER_CUBIC,
-    Image.LANCZOS: cv2.INTER_LANCZOS4,
 }
 
 
@@ -51,62 +37,12 @@ class ApplyBbox(object):
         filter_annotations (bool, optional): Flag to raise if annotations should
             be filtered post cropping
     """
-    def __init__(self, expand=0, filter_annotations=True, keep_box=False):
+    def __init__(self, expand=0, filter_annotations=True):
         self.expand = expand
         self.filter_annotations = filter_annotations
 
     def __call__(self, entry):
-        # Make copy of entry
-        entry = deepcopy(entry)
-
-        if 'bbox' not in entry:
-            return entry
-
-        # Extract bbox
-        bbox = entry['bbox']
-        del entry['bbox']
-
-        # Expand bbox
-        if self.expand != 0:
-            bbox_w = bbox[2] - bbox[0]
-            bbox_h = bbox[3] - bbox[1]
-            expand_w = bbox_w * self.expand / 2
-            expand_h = bbox_h * self.expand / 2
-            bbox[0] -= expand_w
-            bbox[1] -= expand_h
-            bbox[2] += expand_w
-            bbox[3] += expand_h
-
-        if keep_box:
-            if self.expand != 0:
-                entry['bbox'] = [expand_w, expand_h, expand_w + bbox_w, bbox_h + expand_h]
-            else:
-                entry['bbox'] = [0, 0, bbox[2] - bbox[0], bbox[3] - bbox[1]]
-
-        # apply bbox to image and mask
-        entry['image'] = entry['image'].crop((bbox[0], bbox[1], bbox[2], bbox[3]))
-        if 'mask' in entry:
-            entry['mask'] = entry['mask'].crop((bbox[0], bbox[1], bbox[2], bbox[3]))
-
-        if 'annotations' in entry:
-            # apply bbox to annotations
-            anns = entry['annotations'].astype('float')
-            anns[:, 0] -= bbox[1]
-            anns[:, 1] -= bbox[0]
-            anns[:, 2] -= bbox[1]
-            anns[:, 3] -= bbox[0]
-
-            if self.filter_annotations:
-                new_image_size = entry['image'].size
-                keep_idx = (anns[:, 0] >= 0) & \
-                           (anns[:, 1] >= 0) & \
-                           (anns[:, 2] <= new_image_size[0]) & \
-                           (anns[:, 3] <= new_image_size[1])
-                anns = anns[keep_idx]
-
-            entry['annotations'] = anns
-
-        return entry
+        return F.apply_bbox(entry, expand=self.expand, filter_annotations=self.filter_annotations)
 
     def __repr__(self):
         return self.__class__.__name__ + '(expand={}, filter_annotations={})'.format(self.expand, self.filter_annotations)
@@ -149,38 +85,7 @@ class Resize(object):
         self.interpolation = interpolation
 
     def __call__(self, entry):
-        # Make copy of entry
-        entry = deepcopy(entry)
-        orig_image_size = entry['image'].size
-
-        # Rescale image
-        entry['image'] = F.resize(entry['image'], self.size, self.interpolation)
-        new_image_size = entry['image'].size
-
-        # Get height and width scale
-        h_scale = new_image_size[1] / orig_image_size[1]
-        w_scale = new_image_size[0] / orig_image_size[0]
-
-        # Resize rest of fields
-        for k, v in entry.items():
-            if k == 'mask':
-                entry[k] = F.resize(v, self.size, Image.NEAREST)
-            elif k == 'annotations':
-                v = v.astype('float')
-                v[:, 0] *= w_scale
-                v[:, 1] *= h_scale
-                v[:, 2] *= w_scale
-                v[:, 3] *= h_scale
-                entry[k] = v
-            elif k == 'bbox':
-                v = np.array(v, dtype='float')
-                v[0] *= w_scale
-                v[1] *= h_scale
-                v[2] *= w_scale
-                v[3] *= h_scale
-                entry[k] = v
-
-        return entry
+        return F.resize(entry, size=self.size, interpolation=self.interpolation)
 
     def __repr__(self):
         interpolate_str = _pil_interpolation_to_str[self.interpolation]
@@ -209,7 +114,6 @@ class Pad(object):
                 For example, padding [1, 2, 3, 4] with 2 elements on both sides in symmetric mode
                 will result in [2, 1, 1, 2, 3, 4, 4, 3]
     """
-
     def __init__(self, padding, fill=0, padding_mode='constant'):
         assert isinstance(padding, (numbers.Number, tuple))
         assert isinstance(fill, (numbers.Number, str, tuple))
@@ -228,29 +132,7 @@ class Pad(object):
         self.padding_mode = padding_mode
 
     def __call__(self, entry):
-        # Make copy of entry
-        entry = deepcopy(entry)
-
-        # Apply padding
-        for k, v in entry.items():
-            if k == 'image':
-                entry[k] = F.pad(v, self.padding, self.fill, self.padding_mode)
-            elif k == 'mask':
-                entry[k] = F.pad(v, self.padding, 0, self.padding_mode)
-            elif k == 'annotations':
-                v[:, 0] += self.padding[0]
-                v[:, 1] += self.padding[1]
-                v[:, 2] += self.padding[0]
-                v[:, 3] += self.padding[1]
-                entry[k] = v
-            elif k == 'bbox':
-                v[0] += self.padding[0]
-                v[1] += self.padding[1]
-                v[2] += self.padding[0]
-                v[3] += self.padding[1]
-                entry[k] = v
-
-        return entry
+        return F.pad(entry, self.padding, self.fill, self.padding_mode)
 
     def __repr__(self):
         return self.__class__.__name__ + '(padding={0}, fill={1}, padding_mode={2})'.\
@@ -262,29 +144,11 @@ class RandomHorizontalFlip(object):
     Args:
         p (float): probability of the image being flipped. Default value is 0.5
     """
-
     def __init__(self, p=0.5):
         self.p = p
 
     def __call__(self, entry):
-        # Make copy of entry
-        entry = deepcopy(entry)
-        orig_image_size = entry['image'].size
-
-        if random.random() < self.p:
-            for k, v in entry.items():
-                if k in ['image', 'mask']:
-                    entry[k] = F.hflip(v)
-                elif k == 'annotations':
-                    v[:, 0] = orig_image_size[0] - v[:, 0]
-                    v[:, 2] = orig_image_size[0] - v[:, 2]
-                    entry[k] = v
-                elif k == 'bbox':
-                    v[0] = orig_image_size[0] - v[0]
-                    v[2] = orig_image_size[0] - v[2]
-                    entry[k] = v
-
-        return entry
+        return F.random_horizontal_flip(entry, self.p)
 
     def __repr__(self):
         return self.__class__.__name__ + '(p={})'.format(self.p)
@@ -295,69 +159,26 @@ class RandomVerticalFlip(object):
     Args:
         p (float): probability of the image being flipped. Default value is 0.5
     """
-
     def __init__(self, p=0.5):
         self.p = p
 
     def __call__(self, entry):
-        # Make copy of entry
-        entry = deepcopy(entry)
-        orig_image_size = entry['image'].size
-
-        if random.random() < self.p:
-            for k, v in entry.items():
-                if k in ['image', 'mask']:
-                    entry[k] = F.vflip(v)
-                elif k == 'annotations':
-                    v[:, 1] = orig_image_size[1] - v[:, 1]
-                    v[:, 3] = orig_image_size[1] - v[:, 3]
-                    entry[k] = v
-                elif k == 'bbox':
-                    v[1] = orig_image_size[1] - v[1]
-                    v[3] = orig_image_size[1] - v[3]
-                    entry[k] = v
-
-        return entry
+        return F.random_vertical_flip(entry, self.p)
 
     def __repr__(self):
         return self.__class__.__name__ + '(p={})'.format(self.p)
 
 
-# class FixedRandomRotation(object):
-#     """Rotates the given PIL Image at a fixed angle with a given probability
-#     Args:
-#         angle (float, int): angle in degree to rorate the image in the
-#             clockwise direction. Default value is 90
-#         p (float): probability of the image being rotated. Default value is 0.5
-#         resample (int, optional): Desired interpolation. Default is
-#             ``PIL.Image.BILINEAR``
-#         expand (bool, optional): Optional expansion flag.
-#             If true, expands the output image to make it large enough to hold the entire rotated image.
-#             If false or omitted, make the output image the same size as the input image.
-#             Note that the expand flag assumes rotation around the center and no translation.
-#     """
-#     def __init__(self, angle=90, p=0.5, resample=Image.BILINEAR, expand=False):
-#         self.angle = angle
-#         self.p = p
-#         self.resample = self.resample
-#         self.expand = expand
-#
-#     def __call__(self, entry):
-#         # Make copy of entry
-#         entry = deepcopy(entry)
-#
-#         if random.random() < self.p:
-#             for k, v in entry.items():
-#                 if k in ['image', 'mask']:
-#                     entry[k] = F.rotate(v, self.angle, resample=self.resample, expand=self.expand)
-#                 elif k == 'annotations':
-#
-#                 elif k == 'bbox':
-#
-#
-#         return entry
-#
-#     def __repr__(self):
-#         interpolate_str = _pil_interpolation_to_str[self.resample]
-#         return self.__class__.__name__ + '(angle={}, p={}, resample={}, expand={})'.format(
-#             self.angle, self.p, interpolate_str, self.expand)
+class RandomTranspose(object):
+    """Transpose the given PIL Image randomly with a given probability.
+    Args:
+        p (float): probability of the image being transposed. Default value is 0.5
+    """
+    def __init__(self, p=0.5):
+        self.p = p
+
+    def __call__(self, entry):
+        return F.random_transpose(entry, self.p)
+
+    def __repr__(self):
+        return self.__class__.__name__ + '(p={})'.format(self.p)
